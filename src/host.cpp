@@ -32,12 +32,12 @@ struct timespec start, stop;
 double run_time;
 
 /* Parallelization factors */
-int num_cu = 8; //number of compute units
-int number_of_partition = 32; // to keep things simple, let number_of_partition = multiple of num_cu
+int num_cu = 4; //number of compute units
+int number_of_partition = 4; // to keep things simple, let number_of_partition = multiple of num_cu
 
 /* meta-data */
-int hidden_dim = 128; //48, 128
-int output_dim = 47; //30, 47
+int hidden_dim = 16; //48, 128
+int output_dim = 30; //30, 47
 
 int main(int argc, char** argv)
 {
@@ -70,29 +70,24 @@ int main(int argc, char** argv)
     std::vector<data_type,aligned_allocator<ap_int<512>>>     golden_H;
     std::vector<data_type,aligned_allocator<ap_int<512>>>     golden_final;
 
-    std::vector<index_type,aligned_allocator<ap_int<512>>> size_buffer;
-
     read_file <data_type> ("../data/AX.bin", golden_AX);
     read_file <data_type> ("../data/H.bin", golden_H);
     read_file <data_type> ("../data/final.bin", golden_final);
 
     //read sparse matrix
     //read_file <data_type> ("/home/jason/cluster-gcn/Amazon-2M/data.bin", value);
-    read_file <data_type> ("/home/jason/cluster-gcn/Amazon-2M/data.bin", value);
-    read_file <index_type> ("/home/jason/cluster-gcn/Amazon-2M/indices.bin", col_idx);
-    read_file <index_type> ("/home/jason/cluster-gcn/Amazon-2M/indptr.bin", row_ptr);
+    read_file <data_type> ("../data/data.bin", value);
+    read_file <index_type> ("../data/indices.bin", col_idx);
+    read_file <index_type> ("../data/indptr.bin", row_ptr);
     //read weight
-    read_file <data_type> ("/home/jason/cluster-gcn/Amazon-2M/w1.bin", weight_matrix);
-    read_file <data_type> ("/home/jason/cluster-gcn/Amazon-2M/w2.bin", weight_matrix2);
+    read_file <data_type> ("../data/w1.bin", weight_matrix);
+    read_file <data_type> ("../data/w2.bin", weight_matrix2);
     //read dense matrix
-    read_file <data_type> ("/home/jason/cluster-gcn/Amazon-2M/feats.bin", dense_matrix); 
+    read_file <data_type> ("../data/feats.bin", dense_matrix); 
 
-    read_file <index_type> ("../data/shape.bin", size_buffer);
-    row_size = size_buffer[0];
-    nnz_size = size_buffer[1];
 
-    row_size = 2449029;
-    nnz_size = 123718152;
+    row_size = 64;
+    nnz_size = 204;
 
     
     int dense_mtx_col; //number of cols
@@ -234,13 +229,13 @@ int main(int argc, char** argv)
 
     for(int i=0;i<num_cu;i++)
     {
-        if(i<num_cu/2) inBuf_feats[i].flags  = XCL_MEM_DDR_BANK0;
-        else inBuf_feats[i].flags  = XCL_MEM_DDR_BANK3;
+        /*if(i<num_cu/2)*/ inBuf_feats[i].flags  = XCL_MEM_DDR_BANK0;
+        //else inBuf_feats[i].flags  = XCL_MEM_DDR_BANK3;
         inBuf_feats[i].obj = padded_dense_matrix.data(); 
         inBuf_feats[i].param = 0 ;
 
-        if(i<num_cu/2) inBuf_weight[i].flags  = XCL_MEM_DDR_BANK0;
-        else inBuf_weight[i].flags = XCL_MEM_DDR_BANK3;
+        /*if(i<num_cu/2)*/ inBuf_weight[i].flags  = XCL_MEM_DDR_BANK0;
+        //else inBuf_weight[i].flags = XCL_MEM_DDR_BANK3;
         inBuf_weight[i].obj = padded_weight_matrix.data(); 
         inBuf_weight[i].param = 0 ;
 
