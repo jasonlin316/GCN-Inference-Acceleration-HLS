@@ -1,3 +1,4 @@
-# end-to-end-GCN-acceleration
+# GCN Inference Acceleration HLS
+
 
 
