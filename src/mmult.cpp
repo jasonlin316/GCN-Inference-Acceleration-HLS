@@ -22,14 +22,13 @@ struct v_dt {
 //TRIPCOUNT identifier
 
 
-
 const unsigned int c_size = MAX_SIZE;
 extern "C"{
 
 void read_block_matrix(const v_dt *AX, hls::stream<v_dt> &AX_stream,   int block_row_num, int block_col_num){
 
 
-      float localAXblock[16*8*MAX_SIZE][MAX_SIZE];
+      float localAXblock[16*8*MAX_SIZE][MAX_SIZE]; 
 #pragma HLS resource variable=localAXblock core=RAM_2P_URAM
 #pragma HLS ARRAY_PARTITION variable=localAXblock dim=2 complete
 
@@ -85,14 +84,12 @@ void compute(hls::stream<v_dt> &AX_stream, v_dt * c, const float localW[MAX_SIZE
 #pragma HLS ARRAY_PARTITION variable=localAX dim=1 complete
 #pragma HLS ARRAY_PARTITION variable=localAX dim=2 complete  
         
-        float localC[MAX_SIZE][MAX_SIZE][16][8];
+        float localC[MAX_SIZE][MAX_SIZE][16][8]; 
 #pragma HLS resource variable=localC core=RAM_2P_URAM
 #pragma HLS ARRAY_PARTITION variable=localC dim=1 complete
 #pragma HLS ARRAY_PARTITION variable=localC dim=2 complete
          
         for (int i = 0 ; i < block_row_num; i = i + 16){      
-                
-
                 
                 for (int  kk = 0; kk < block_col_num; kk = kk + 1){
                                
@@ -102,7 +99,7 @@ void compute(hls::stream<v_dt> &AX_stream, v_dt * c, const float localW[MAX_SIZE
 #pragma HLS PIPELINE II=1 rewind
                             v_dt tmpIn;
 #pragma HLS aggregate variable = tmpIn
-                            tmpIn = AX_stream.read();
+                            tmpIn = AX_stream.read(); 
                             
                             for (int v = 0; v < MAX_SIZE; v = v + 1)
                             {
@@ -114,7 +111,7 @@ void compute(hls::stream<v_dt> &AX_stream, v_dt * c, const float localW[MAX_SIZE
                       }
                         
                         
-                        
+                        //Nested loops to perform block matrix multiplications
                         systolic0: for(int  axCol = 0; axCol < vSize; axCol++)
                         {
                               systolic1: for(int  ww = 0; ww < weight_col; ww++) //trasverse by weight col
@@ -123,15 +120,15 @@ void compute(hls::stream<v_dt> &AX_stream, v_dt * c, const float localW[MAX_SIZE
 #pragma HLS dependence variable=localC inter false
                                     systolic1inner: for (int  j = 0; j < 16; j++){
 #pragma HLS PIPELINE II=1 rewind
+ //PIPELINE II=1 is another way to unroll your loops. Since you asked the compiler to achieve inital interval = 1 for the outer loop, it will try to achieve this II by fully unroll the inner loops
                                       systolic2: for(int  ii = 0; ii < MAX_SIZE; ii++) 
                                       {
                                               systolic3: for(int  jj = 0; jj < MAX_SIZE; jj++) 
                                               {
                                                         float last;
-                                                        if (axCol==0 && kk ==0) {last = 0;}
+                                                        if (axCol==0 && kk ==0) {last = 0;} //deal with inital cases
                                                         else {last = localC[ii][jj][j][ww];}
                                 
-                                                        //float result =  last + localAX[ii][axCol] * localW[axCol+col*VDATA_SIZE][jj + ww*VDATA_SIZE];
                                                         float result =  last + localAX[ii][axCol][j] * localW[axCol][jj][kk][ww];
                                                         
                                                         localC[ii][jj][j][ww] = result; //result; // Write back results                                              
@@ -147,7 +144,7 @@ void compute(hls::stream<v_dt> &AX_stream, v_dt * c, const float localW[MAX_SIZE
                 
                 
                 
-                // store localc
+                // store local result back to FPGA local memory
                 for (int j = 0; j < 16 ; j = j + 1){
                       if (i + j < block_row_num) {
                             for (int k = 0; k < 16; k = k + 1){
@@ -158,9 +155,9 @@ void compute(hls::stream<v_dt> &AX_stream, v_dt * c, const float localW[MAX_SIZE
                                     for (int v = 0 ; v < 16; v++){
                                         data_type tmpC;
                                         tmpC = localC[k][v][j][kk];
-                                        if (tmpC < 0 && ReLU) tmpIn.data[v] = 0;
+                                        if (tmpC < 0 && ReLU) tmpIn.data[v] = 0; //ReLU function in GNN
                                         else tmpIn.data[v] = tmpC;
-                                        //tmpIn.data[v] = localC[k][v][j][kk];
+                                      
                                     }
                                     int index = ((i + j)* 16 + k )*weight_col + kk;
                                     c[index] = tmpIn;                                      
@@ -239,10 +236,11 @@ void loadweight(const v_dt *W, float localW[MAX_SIZE][MAX_SIZE][8][8], int block
                
         
         // read GCN weight
+        //The below two functions are used to streamed the required data from FPGA local memory to FPGA on-chip memory
         loadweight(W, localW, block_col_num, weight_col);
-
         read_block_matrix(AX, AX_stream,  block_row_num, block_col_num);
-        compute(AX_stream, c, localW, block_row_num, block_col_num, weight_col, ReLU);
+        //Now the required data are loaded on-chip, we can perform feature transformation using block matrix multiplication
+        compute(AX_stream, c, localW, block_row_num, block_col_num, weight_col, ReLU); 
         
         
         
