@@ -1,7 +1,7 @@
 # GCN Inference Acceleration HLS
 
 
-'''
+```
 GCN Inference Acceleration HLS/
 │   README.md
 │
@@ -18,5 +18,5 @@ GCN Inference Acceleration HLS/
 │   │   mmult.cpp
 │   │   ...
 └─
+```
 
-'''
