@@ -17,6 +17,7 @@ typedef float data_type;
 typedef int index_type;
 
 
+//vectorize data. Width of memory ports are 512 bits, so we bundle 16 floating point data together to fully utilize the 512-bit bandwidth.
 struct v_datatype {
     data_type data[VDATA_SIZE];
 };
@@ -131,7 +132,7 @@ static void spdmm_compute(hls::stream<v_datatype> & streamdense, hls::stream<int
       
       
       for(int j = 0; j < itr_number; j++){
-          data_type tmpvalue = streamCSRvalue.read();
+          data_type tmpvalue = streamCSRvalue.read();//read data out of the FIFO
 
           for(int ii = 0; ii < featurepn; ii = ii + 1){
 #pragma HLS PIPELINE II=1 rewind
@@ -147,7 +148,7 @@ static void spdmm_compute(hls::stream<v_datatype> & streamdense, hls::stream<int
             else { 
               for(int jj = 0; jj < VDATA_SIZE; jj = jj + 1){
                 data_type last =  tmpoutbuffer[ii].data[jj];
-                tmpoutbuffer[ii].data[jj] = last + tmpdense.data[jj]*tmpvalue;
+                tmpoutbuffer[ii].data[jj] = last + tmpdense.data[jj]*tmpvalue; //SIMD Multiply and Add. 
 
               } 
             }
@@ -257,10 +258,11 @@ void spdmm(
   #pragma HLS resource variable=streamResult core=RAM_2P_URAM
   #pragma HLS STREAM variable=streamResult depth=8
   
-  
+  //The three functions below are used to load the data from FPGA memory into the on-chip memory (FIFOs)
   readindptr(CSRindptr, additionNum1, additionNum2, k);
   readindexandvalue(CSRindexandvalue, streamCSRindex, streamCSRvalue, nnz);
   readdense(dense, streamCSRindex, streamdense, featurePn, nnz);
+  //Main compute function, read data out of the FIFO for computation.
   spdmm_compute( streamdense, additionNum1, streamCSRvalue,  streamResult, featurePn,   nnz, k);
   readResult( streamResult, additionNum2,  output,k, featurePn);
   
