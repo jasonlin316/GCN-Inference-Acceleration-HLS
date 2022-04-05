@@ -1,15 +1,20 @@
 # GCN Inference Acceleration using High-Level Synthesis
 
 Source code for ["GCN Inference Acceleration using High-Level Synthesis"](https://ieeexplore.ieee.org/document/9622801), HPEC 2021.
+Details of hardware design can be found in the paper.
+
+### End-to-end GCN inference using HLS programming model
+![end-to-end](https://github.com/jasonlin316/GCN-Inference-Acceleration-HLS/blob/main/pic/e2e.png)
 
 File structure:
 ```
 GCN Inference Acceleration HLS/
 │   README.md
 │
-└───/data #input data and golden data
+└───/data #input data stored in CSR format and a data generator
 │   │   indptr.bin
 │   │   indices.bin
+│   │   data_generator.py # a python script to generate input matrices based on the size you specified
 │   │   ...
 └───/run #files and scripts for compilation and execution
 │   │   makefile
